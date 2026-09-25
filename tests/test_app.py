@@ -68,6 +68,19 @@ class FixtureTests(unittest.TestCase):
             1,
         )
 
+    def test_seeded_login_account_is_outside_run_cleanup(self):
+        client = create_app(self.path, TOKEN, ("seed@example.test", "seed-password-12345")).test_client()
+        login = client.post(
+            "/api/auth/login",
+            json={"email": "seed@example.test", "password": "seed-password-12345"},
+        )
+        self.assertEqual(login.status_code, 201)
+        headers = {"Authorization": f"Bearer {TOKEN}"}
+        self.assertEqual(
+            client.delete(f"/api/luowang/test-data/{RUN_A}", headers=headers).json["remaining"], 0
+        )
+        self.assertTrue(client.get("/api/auth/status").json["authenticated"])
+
 
 if __name__ == "__main__":
     unittest.main()
