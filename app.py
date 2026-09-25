@@ -99,7 +99,7 @@ document.querySelector('#register').addEventListener('submit', async event => {
   });
   const result = await response.json();
   document.querySelector('#message').textContent = response.ok
-    ? `Welcome, ${result.user.displayName}.` : result.error;
+    ? `你好，${result.user.displayName}。` : result.error;
 });
 document.querySelector('#delete').addEventListener('click', async () => {
   const response = await fetch('/api/me', {method: 'DELETE'});
