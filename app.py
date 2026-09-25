@@ -20,7 +20,11 @@ ARGON2ID = re.compile(r"^\$argon2id\$v=19\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/]+\$[A
 HASHER = PasswordHasher()
 
 
-def create_app(database_path: str, cleanup_token: str | None = None) -> Flask:
+def create_app(
+    database_path: str,
+    cleanup_token: str | None = None,
+    seed_account: tuple[str, str] | None = None,
+) -> Flask:
     if cleanup_token is not None and len(cleanup_token) < 32:
         raise ValueError("CYNOS_TEST_DATA_CLEANUP_TOKEN must contain at least 32 characters")
     path = Path(database_path)
@@ -48,6 +52,12 @@ def create_app(database_path: str, cleanup_token: str | None = None) -> Flask:
             );
             """
         )
+        if seed_account is not None:
+            email, password = seed_account
+            db.execute(
+                "INSERT OR IGNORE INTO users(email, display_name, password_hash) VALUES (?, ?, ?)",
+                (email.lower(), "预置测试员", HASHER.hash(password)),
+            )
 
     def current_user(db: sqlite3.Connection):
         token = request.cookies.get("sid", "")
@@ -210,8 +220,13 @@ document.querySelector('#delete').addEventListener('click', async () => {
 
 
 if __name__ == "__main__":
+    seed_email = os.environ.get("CYNOS_TEST_ACCOUNT_EMAIL")
+    seed_password = os.environ.get("CYNOS_TEST_ACCOUNT_PASSWORD")
+    if bool(seed_email) != bool(seed_password):
+        raise ValueError("CYNOS_TEST_ACCOUNT_EMAIL and PASSWORD must be configured together")
     app = create_app(
         str(Path(os.environ.get("APP_DATA_DIR", "/data")) / "fixture.db"),
         os.environ.get("CYNOS_TEST_DATA_CLEANUP_TOKEN") or None,
+        (seed_email, seed_password) if seed_email and seed_password else None,
     )
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "3100")))
